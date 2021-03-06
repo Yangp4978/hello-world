@@ -1,0 +1,183 @@
+887. 鸡蛋掉落
+你将获得 K 个鸡蛋，并可以使用一栋从 1 到 N  共有 N 层楼的建筑。
+
+每个蛋的功能都是一样的，如果一个蛋碎了，你就不能再把它掉下去。
+
+你知道存在楼层 F ，满足 0 <= F <= N 任何从高于 F 的楼层落下的鸡蛋都会碎，从 F 楼层或比它低的楼层落下的鸡蛋都不会破。
+
+每次移动，你可以取一个鸡蛋（如果你有完整的鸡蛋）并把它从任一楼层 X 扔下（满足 1 <= X <= N）。
+
+你的目标是确切地知道 F 的值是多少。
+
+无论 F 的初始值如何，你确定 F 的值的最小移动次数是多少？
+示例 1：
+
+输入：K = 1, N = 2
+输出：2
+解释：
+鸡蛋从 1 楼掉落。如果它碎了，我们肯定知道 F = 0 。
+否则，鸡蛋从 2 楼掉落。如果它碎了，我们肯定知道 F = 1 。
+如果它没碎，那么我们肯定知道 F = 2 。
+因此，在最坏的情况下我们需要移动 2 次以确定 F 是多少。
+示例 2：
+
+输入：K = 2, N = 6
+输出：3
+示例 3：
+
+输入：K = 3, N = 14
+输出：4
+
+来源：力扣（LeetCode）
+
+#define MAX(a, b) (a) > (b) ? (a) : (b)
+#define MIN(a, b) (a) > (b) ? (b) : (a)
+
+int g_memo[200][20000]; // 加一个备忘录，效率高的多的多
+int dp(int k, int n)
+{
+int i;
+int ret = 1000;
+
+if (g_memo[k][n] != 0) {
+    return g_memo[k][n];
+}
+
+if (k == 1) {
+    return n;
+}
+if (n == 0) {
+    return 0;
+}
+int low = 1;
+int high = n;
+while (low <= high) {
+    int mid = (low + high) / 2;
+    int broken = dp(k - 1, mid - 1);
+    int notBroken = dp(k, n - mid);
+    if (broken > notBroken) {
+        high = mid - 1;
+        ret = MIN(ret, broken + 1);
+    } else {
+        low = mid + 1;
+        ret = MIN(ret, notBroken + 1);
+    }
+}
+g_memo[k][n] = ret;
+
+return ret;
+}
+
+int superEggDrop(int K, int N){
+
+return dp(K, N);
+}
+
+作者：wo-shi-zui-qiang-bei-ji-ta
+链接：https://leetcode-cn.com/problems/super-egg-drop/solution/cdong-tai-gui-hua-by-wo-shi-zui-qiang-bei-ji-ta-3/
+来源：力扣（LeetCode）
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+
+/*
+    方法二：
+        暴力求解每个状态值会导致时间超限，需要从其他方面入手。
+        状态方程：dp(K, N) = 1 + min(max(dp(K − 1, X − 1), dp(K, N − X))) 1 <= X <= N
+        根据常识可知，如果鸡蛋一定的话，随着楼层的增高，所需要的探测次数一定会越来越大，即有递增性质。
+        从状态方程看，dp(K − 1, X − 1)是随X增大而增大的，dp(K, N − X)是随X增大而减小的，
+        想象在直角坐标系中，对于同一个X，肯定在相交的时候，他俩之间在Y轴上的值最大值最小。
+        我们可以设置 down = dp(K − 1, X − 1) up = dp(K, N − X), left = 1, right = N,即X的最大最小值，
+        在left和right区间内通过二分查找搜索使 down 无限接近 up 的点，即使 down < up 的最大X值
+        如果down大于up，X需要左移动，否则，X需要向右移动。
+        当确定X值后，有可能down ！= up, 是在交点左侧的最大点，此时down < up, 下一个点 X + 1, down > up,
+        需要比较这两种情况下最大值的最小值，并记录。
+*/
+int dropHelper(int K, int N, int *dp[])
+{
+    if(dp[K][N]) /* 记忆性搜索，已经计算过，可以直接使用 */
+        return dp[K][N];
+    int ret = 0;
+    if(K == 1) /* 只有一个鸡蛋，有几层就需要仍几次 */
+        return N;
+    else if(N == 0) /* 如果一层也没有，不需要仍 */
+        return 0;
+    else
+    {
+        /* 二分搜索使次数最少的点 */
+        int left = 1, right = N;
+        while(left < right)
+        {
+            int mid = left + (right - left + 1) / 2; /* 向上取整 */
+            int down = dropHelper(K - 1, mid - 1, dp);
+            int up = dropHelper(K, N - mid, dp);
+            if(down == up)
+                left = right = mid;
+            else if(down > up)
+                right = mid - 1;
+            else
+                left = mid;
+        }
+
+        /*此时 left 是使 down <= up 的最大X点 下一个点(left + 1), down >= up */
+        ret = 1 + fmin(dropHelper(K, N - left, dp), dropHelper(K - 1, (left + 1) - 1, dp));
+    }
+
+    dp[K][N] = ret;
+    return ret;
+}
+
+int superEggDrop(int K, int N){
+    int **dp = (int **)calloc(1, sizeof(int *) * (K + 1));
+    for(int i = 0; i <= K; i++)
+        dp[i] = (int *)calloc(1, sizeof(int) * (N + 1));
+    
+    return dropHelper(K, N, dp);
+}
+
+作者：375D
+链接：https://leetcode-cn.com/problems/super-egg-drop/solution/dong-tai-gui-hua-dan-diao-di-zeng-xing-er-fen-sou-/
+来源：力扣（LeetCode）
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+
+方法四：类似背包问题。
+与方法一类似，换个思维，dp[T][K]表示只扔T次，有K个鸡蛋，最多可以探测层数。
+dp[T][K] = sum(dp[T - 1][K] + dp[T - 1][K - 1]) + 1
+dp[T - 1][K] 表示该次没碎，还可以向上探测的最大楼层
+dp[T - 1][K - 1] 表示该次碎了，还可以向下探测的最大层数
+
+
+int superEggDrop(int K, int N){
+    if(N == 1)
+        return 1;
+    if(K == 1)
+        return N;
+    int **dp = (int **)calloc(N + 1, sizeof(int *)); /*T不会超过N，用N做最大限制*/
+    for(int i = 0; i <= N; i++)
+        dp[i] = (int *)calloc(K + 1, sizeof(int));
+    
+    for(int i = 1; i <= K; i++) /* 至少需要一个鸡蛋，0个鸡蛋的话，无法探测 */
+        dp[1][i] = 1;/* 如果只操作一次的话，最高只有1层。 */
+
+    /* 只扔一次的上面已经计算过了，可以直接用两次开始。*/
+    for(int T = 2; T <= N; T++)/*只有一个鸡蛋的最差情况下，会T==N，否则，T不会增长到N*/
+    {
+        for(int egg = 1; egg <= K; egg++) /*从1个鸡蛋开始尝试,直到K个鸡蛋*/
+            dp[T][egg] = 1 + dp[T - 1][egg] + dp[T - 1][egg - 1];
+        
+        if(dp[T][K] >= N)/*T次操作，K个鸡蛋，可以探测的最大楼层数首次大于N，此时T就是探测N次楼层最少需要的操作数*/
+            return T;
+    }
+
+    return -1;
+}
+
+作者：375D
+链接：https://leetcode-cn.com/problems/super-egg-drop/solution/dong-tai-gui-hua-dan-diao-di-zeng-xing-er-fen-sou-/
+来源：力扣（LeetCode）
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+
+ 0-1 背包问题
+描述： 给你⼀个可装载重量为 W 的背包和 N 个物品，每个物品有重量和价值两 个属性。其中第 i 个物品的重量为 wt[i] ，价值为
+ val[i] ，现在让你⽤ 这个背包装物品，最多能装的价值是多少？
+举个简单的例⼦，输⼊如下： N = 3, W = 4 wt = [2, 1, 3] val = [4, 2, 3]
+算法返回 6
+题⽬就是这么简单，⼀个典型的动态规划问题。这个题⽬中的物品不可以分 割，要么装进包⾥，要么不装，不能说切成两块装⼀半。这就是 0-1 背包这 个名词的来历。
